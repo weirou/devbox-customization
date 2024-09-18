@@ -106,6 +106,7 @@ function EnsureNewTeamsInstalled {
 # -----------------------------------------------
 #                    Main 
 # -----------------------------------------------
+New-Item -Path 'C:\Temp' -ItemType "directory" -Force
 EnsureLatestVCInstalled
 EnsureLatestRDWebRTCRedirectorSerivceInstalled
 EnsureNewTeamsInstalled
