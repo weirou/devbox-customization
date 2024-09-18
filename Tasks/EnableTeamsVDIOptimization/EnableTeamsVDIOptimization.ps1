@@ -1,5 +1,5 @@
 param (
-    [bool] $UninstallClassicTeams,
+    [bool] $UninstallClassicTeams
 )
 
 function EnsureLatestVCInstalled {
@@ -17,6 +17,7 @@ function EnsureLatestVCInstalled {
     
     # Install the latest Visual C++ Redistributable if it was not Installed 
     $TempPath = "C:\Temp\VcRedist"
+    New-Item -Path $TempPath -ItemType "directory" -Force
     $VcList = Get-VcList | Where-Object { $_.Version -notin $InstalledVcList } | Get-VcRedist -Path $TempPath
     if ($VcList.Length -gt 0) {
         Write-Output "Installing latest Visual C++ Redistributable"
