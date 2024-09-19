@@ -3,46 +3,59 @@ param (
 )
 
 function EnsureLatestVCInstalled {
-    # Get the installed Visual C++ Redistributable version list
     $InstalledVcList = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
-
-    # Install the VcRedist Module if not already installed
-    if ($(Get-Module VcRedist) -ne $null) {
-        Write-Output "VcRedist Module already installed"
-    } else {
-        Write-Output "Installing VcRedist Module"
-        Install-Module -Name VcRedist -Force
-        Import-Module VcRedist
-
-        if ($(Get-Module VcRedist) -ne $null) {
-            Write-Output "VcRedist Module installed successfully"
-        } else {
-            Write-Error "VcRedist Module installation failed"
-        }
+    if ($InstalledVcList -contains '14.40.33810.0') {
+        Write-Output "Latest Visual C++ Redistributable is already installed"
+        return
     }
     
-    # Install the latest Visual C++ Redistributable if it was not Installed 
-    $TempPath = "C:\Temp\VcRedist"
-    New-Item -Path $TempPath -ItemType "directory" -Force
-    $VcList = Get-VcList | Where-Object { $_.Version -notin $InstalledVcList } | Get-VcRedist -Path $TempPath
-    if ($VcList.Length -gt 0) {
-        Write-Output "Installing latest Visual C++ Redistributable"
-        $VcList | Install-VcRedist -Path $TempPath
+    # Define the URLs for the latest Visual C++ Redistributable
+    $vcRedistUrlX64 = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    $vcRedistUrlX86 = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
 
-        # Check if installation was successful
-        $VcVersions = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
-        if ((Get-VcList | Where-Object { $_.Version -notin $VcVersions }).Length -eq 0) {
-            Write-Output "Visual C++ Redistributable Installation successful"
-            Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
-        } else{
-            Write-Error "Visual C++ Redistributable Installation failed"
-        }
+    # Define the paths where the installers will be saved
+    $vcRedistPathX64 = "C:\Temp\vc_redist.x64.exe"
+    $vcRedistPathX86 = "C:\Temp\vc_redist.x86.exe"
+    # Install x64 version
+    Install-VCRedist -Url $vcRedistUrlX64 -Path $vcRedistPathX64
+    # Install x86 version
+    Install-VCRedist -Url $vcRedistUrlX86 -Path $vcRedistPathX86
+
+    # Check if installation was successful
+    $VcList = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
+    if ($VcList -contains '14.40.33810.0') {
+        Write-Output "Visual C++ Redistributable Installation successful $VcList"
+    } else{
+        Write-Error "Visual C++ Redistributable Installation failed"
+    }
+}
+
+function Install-VCRedist {
+    param (
+        [string]$Url,
+        [string]$Path
+    )
+
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $Path -ErrorAction Stop
+        Write-Output "Download completed successfully for $Path."
+    } catch {
+        Write-Output "Download failed for ${Path} $_"
+        exit 1
+    }
+
+    # Check if the file exists and is not empty
+    if (Test-Path $Path) {
+        # Run the installer silently
+        Write-Output "Installing latest Visual C++ Redistributable for $Path"
+        Start-Process -FilePath $Path -ArgumentList '/install', '/quiet', '/norestart' -NoNewWindow -Wait
+        Write-Output "Installation completed successfully for $Path."
     } else {
-        Write-Output "Latest Visual C++ Redistributable already installed"
+        Write-Output "Downloaded file is missing or empty for $Path."
     }
 
     # Clean up
-    Remove-Item -Path $TempPath -Force
+    Remove-Item -Path $Path -Force
 }
 
 function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
