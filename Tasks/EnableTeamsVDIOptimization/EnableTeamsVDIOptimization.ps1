@@ -7,12 +7,18 @@ function EnsureLatestVCInstalled {
     $InstalledVcList = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
 
     # Install the VcRedist Module if not already installed
-    if ($(Get-Module VcRedist).Length -gt 0) {
+    if ($(Get-Module VcRedist) -ne $null) {
         Write-Output "VcRedist Module already installed"
     } else {
         Write-Output "Installing VcRedist Module"
         Install-Module -Name VcRedist -Force
         Import-Module VcRedist
+
+        if ($(Get-Module VcRedist) -ne $null) {
+            Write-Output "VcRedist Module installed successfully"
+        } else {
+            Write-Error "VcRedist Module installation failed"
+        }
     }
     
     # Install the latest Visual C++ Redistributable if it was not Installed 
@@ -43,11 +49,23 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
     # Download the latest MSI
     $Url = "https://aka.ms/msrdcwebrtcsvc/msi"
     $Package = "C:\Temp\Latest_WebRTCRedirectorService.MSI"
-    Invoke-WebRequest -Uri $Url -OutFile $Package
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $Package -ErrorAction Stop
+        Write-Output "Download completed successfully."
+    } catch {
+        Write-Output "Download failed: $_"
+        return
+    }
 
-    # Kick off installation
-    Write-Output "Installing $Package"
-    Start-Process -FilePath $Package -ArgumentList '/quiet' -Wait
+    # Check if the file exists and is not empty
+    if (Test-Path $Package) {
+        # Kick off installation
+        Write-Output "Installing $Package"
+        Start-Process -FilePath $Package -ArgumentList '/quiet' -Wait
+    } else {
+        Write-Output "Downloaded file is missing or empty."
+        return
+    }
     
     # Check if installation was successful
     $Product = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Remote Desktop WebRTC Redirector Service" }
@@ -73,11 +91,24 @@ function EnsureNewTeamsInstalled {
     # Download the Teams Bootstrapper
     $TeamsBootstrapperUrl = "https://go.microsoft.com/fwlink/?linkid=2243204&clcid=0x409"
     $TeamsBootstrapperPath = "C:\Temp\TeamsBootstrapper.exe"
-    Invoke-WebRequest -Uri $TeamsBootstrapperUrl -OutFile $TeamsBootstrapperPath
+    try {
+        Invoke-WebRequest -Uri $TeamsBootstrapperUrl -OutFile $TeamsBootstrapperPath -ErrorAction Stop
+        Write-Output "Download completed successfully."
+    } catch {
+        Write-Output "Download failed: $_"
+        return
+    }
 
-    # Install the new Teams
-    Write-Output "Installing New Teams"
-    & "$TeamsBootstrapperPath -p"
+    # Check if the file exists and is not empty
+    if (Test-Path $TeamsBootstrapperPath) {
+        # Install the new Teams
+        Write-Output "Installing New Teams"
+        Start-Process -FilePath $TeamsBootstrapperPath -ArgumentList '-p' -NoNewWindow -Wait
+        Write-Output "Execution completed successfully."
+    } else {
+        Write-Output "Downloaded file is missing or empty."
+        return
+    }
 
     # Check if installation was successful
     if((Get-AppxPackage -name MsTeams -AllUsers) -ne $null){
