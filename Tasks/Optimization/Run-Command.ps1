@@ -93,9 +93,9 @@ function Install-VCRedist {
 }
 
 function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
-    # Download the latest MSI
     $Url = "https://aka.ms/msrdcwebrtcsvc/msi"
     $Package = "C:\Temp\Latest_WebRTCRedirectorService.MSI"
+
     try {
         Invoke-WebRequest -Uri $Url -OutFile $Package -ErrorAction Stop
         Write-Output "Remote Desktop Web RTC Redirector Service Download completed successfully."
@@ -105,10 +105,16 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
     }
 
     # Check if the file exists and is not empty
-    if (Test-Path $Package) {
+    if ((Test-Path $Package) -and ((Get-Item $Package).Length -gt 0)) {
         # Kick off installation
         Write-Output "Installing $Package"
-        Start-Process -FilePath $Package -ArgumentList '/quiet' -Wait
+        try {
+            Start-Process -FilePath $Package -ArgumentList '/quiet' -Wait -ErrorAction Stop
+            Write-Output "Installation process started successfully."
+        } catch {
+            Write-Error "Installation process failed: $_"
+            return
+        }
     } else {
         Write-Output "Downloaded file is missing or empty."
         return
@@ -196,8 +202,11 @@ function Restart-NewTeams(){
     if ($TeamsPackage -ne $null) {
         # Restart Teams to get the latest version
         $InstallLocation = $TeamsPackage.InstallLocation
-        Write-Output "Trying to update new Teams to the latest version, it may not working though."
-        & "$InstallLocation\ms-teamsupdate.exe"
+        $UpdatePath = "$InstallLocation\ms-teamsupdate.exe"
+        if(Test-Path $UpdatePath){
+            Write-Output "Trying to update new Teams to the latest version, it may not working though."
+            & "$UpdatePath"
+        }
         
         Write-Output "Trying to start new Teams."
         & "$InstallLocation\ms-teams.exe"
