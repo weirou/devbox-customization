@@ -35,14 +35,6 @@ function EnsureLatestVCInstalled {
     Install-VCRedist -Url $vcRedistUrlX64 -Path $vcRedistPathX64
     # Install x86 version
     Install-VCRedist -Url $vcRedistUrlX86 -Path $vcRedistPathX86
-
-    # Check if installation was successful
-    $VcList = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Classes\Installer\Dependencies\VC,*' -Name Version
-    if (Compare-VersionsToTarget -VersionList $VcList -TargetVersion $MinimumVersion) {
-        Write-Output "Visual C++ Redistributable Installation successful - $VcList"
-    } else{
-        Write-Error "Visual C++ Redistributable Installation failed"
-    }
 }
 
 function Compare-VersionsToTarget {
@@ -138,8 +130,9 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
 function EnsureNewTeamsInstalled {
     # Check if New Teams is already installed
     # There might be multiple versions of Teams installed, we will always use the latest one
-    $TeamsPackage = (Get-AppxPackage -name MsTeams -AllUsers)[-1]
-    if ($TeamsPackage -ne $null) {
+    $TeamsPackages = Get-AppxPackage -name MsTeams -AllUsers
+    if ($TeamsPackages -ne $null) {
+        $TeamsPackage = $TeamsPackages[-1]
         $Version = $TeamsPackage.Version
         Write-Output "New Teams is already installed with version - $Version"
     } else {
@@ -203,23 +196,11 @@ function Restart-NewTeams(){
     if ($TeamsPackage -ne $null) {
         # Restart Teams to get the latest version
         $InstallLocation = $TeamsPackage.InstallLocation
+        Write-Output "Trying to update new Teams to the latest version, it may not working though."
+        & "$InstallLocation\ms-teamsupdate.exe"
+        
+        Write-Output "Trying to start new Teams."
         & "$InstallLocation\ms-teams.exe"
-        Write-Output "New Teams process has been started."
-
-        # Wait for a specified amount of time (e.g., 10 seconds)
-        Start-Sleep -Seconds 30
-
-        # Get the process ID of the new Teams application
-        $TeamsProcess = Get-Process -Name "ms-teams" -ErrorAction SilentlyContinue
-
-        # Check if the process is running
-        if ($TeamsProcess) {
-            # Kill the process
-            Stop-Process -Id $TeamsProcess.Id -Force
-            Write-Output "New Teams process has been terminated."
-        } else {
-            Write-Output "New Teams process is not running."
-        }
 
         $UpdatedVersion = (Get-AppxPackage -name MsTeams -AllUsers)[-1].Version
         Write-Output "The version of Teams is $UpdatedVersion"
