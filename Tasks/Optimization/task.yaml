@@ -1,0 +1,8 @@
+$schema: 1.0
+name: Optimization
+command: .\Run-Command.ps1 -UninstallClassicTeams {{uninstallClassicTeams}}
+rebootRequired: false
+parameters:
+  uninstallClassicTeams:
+    type: boolean
+    default: false
