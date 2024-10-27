@@ -95,7 +95,6 @@ function Install-VCRedist {
 function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
     $Url = "https://aka.ms/msrdcwebrtcsvc/msi"
     $Package = "C:\Temp\Latest_WebRTCRedirectorService.MSI"
-
     try {
         Invoke-WebRequest -Uri $Url -OutFile $Package -ErrorAction Stop
         Write-Output "Remote Desktop Web RTC Redirector Service Download completed successfully."
@@ -104,6 +103,34 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
         return
     }
 
+    if (!(Test-Path $Package) -or ((Get-Item $Package).Length -lt 0)) {
+        Write-Output "Downloaded file is missing or empty."
+        return
+    }
+
+    $MaxRetryCount = 3
+    for($i = 0; $i -lt $MaxRetryCount; $i++){
+        Write-Output "Trying to install Remote Desktop WebRTC Redirector Service for the $i time."
+        Install-RDWebRTCRedirectorServiceWithLocalPacakge -Package $Package
+        # Check if installation was successful
+        $Product = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Remote Desktop WebRTC Redirector Service" }
+        if ($Product -ne $null) {
+            $CurrentVersion = $Product.Version
+            Write-Output "Remote Desktop WebRTC Redirector Service Installation successful on version $CurrentVersion"
+            break
+        } else {
+            Write-Output "Remote Desktop WebRTC Redirector Service Installation failed"
+        }
+    }
+    
+    # Clean up
+    Remove-Item -Path $Package -Force
+}
+
+function Install-RDWebRTCRedirectorServiceWithLocalPacakge{
+    param (
+        [string]$Package
+    )
     # Check if the file exists and is not empty
     if ((Test-Path $Package) -and ((Get-Item $Package).Length -gt 0)) {
         # Kick off installation
@@ -119,18 +146,6 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
         Write-Output "Downloaded file is missing or empty."
         return
     }
-    
-    # Check if installation was successful
-    $Product = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -eq "Remote Desktop WebRTC Redirector Service" }
-    if ($Product -ne $null) {
-        $CurrentVersion = $Product.Version
-        Write-Output "Remote Desktop WebRTC Redirector Service Installation successful on version $CurrentVersion"
-    } else {
-        Write-Error "Remote Desktop WebRTC Redirector Service Installation failed"
-    }
-    
-    # Clean up
-    Remove-Item -Path $Package -Force
 }
 
 function EnsureNewTeamsInstalled {
