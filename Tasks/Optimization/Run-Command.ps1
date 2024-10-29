@@ -110,9 +110,6 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
         try {
             Start-Process -FilePath $Package -ArgumentList '/quiet' -Wait -ErrorAction Stop
             Write-Output "Installation process started successfully."
-
-            # sleep for 30 seconds
-            Start-Sleep -Seconds 30
         } catch {
             Write-Error "Installation process failed: $_"
             return
@@ -127,7 +124,6 @@ function EnsureLatestRDWebRTCRedirectorSerivceInstalled {
         if ($Product -ne $null) {
             $CurrentVersion = $Product.Version
             Write-Output "Remote Desktop WebRTC Redirector Service Installation successful on version $CurrentVersion"
-            break
         } else {
             Write-Error "Remote Desktop WebRTC Redirector Service Installation failed"
         }
